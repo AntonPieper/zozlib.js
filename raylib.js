@@ -6,20 +6,20 @@ function make_environment(env) {
             }
             return (...args) => {
                 throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
-            }
-        }
+            };
+        },
     });
 }
 
 let iota = 0;
-const LOG_ALL     = iota++; // Display all logs
-const LOG_TRACE   = iota++; // Trace logging, intended for internal use only
-const LOG_DEBUG   = iota++; // Debug logging, used for internal debugging, it should be disabled on release builds
-const LOG_INFO    = iota++; // Info logging, used for program execution info
+const LOG_ALL = iota++; // Display all logs
+const LOG_TRACE = iota++; // Trace logging, intended for internal use only
+const LOG_DEBUG = iota++; // Debug logging, used for internal debugging, it should be disabled on release builds
+const LOG_INFO = iota++; // Info logging, used for program execution info
 const LOG_WARNING = iota++; // Warning logging, used on recoverable failures
-const LOG_ERROR   = iota++; // Error logging, used on unrecoverable failures
-const LOG_FATAL   = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
-const LOG_NONE    = iota++; // Disable logging
+const LOG_ERROR = iota++; // Error logging, used on unrecoverable failures
+const LOG_FATAL = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
+const LOG_NONE = iota++; // Disable logging
 
 class RaylibJs {
     // TODO: We stole the font from the website
@@ -41,7 +41,7 @@ class RaylibJs {
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
-        this.currentMousePosition = {x: 0, y: 0};
+        this.currentMousePosition = { x: 0, y: 0 };
         this.images = [];
         this.quit = false;
     }
@@ -77,10 +77,10 @@ class RaylibJs {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
         const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
+            this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
         };
         const mouseMove = (e) => {
-            this.currentMousePosition = {x: e.clientX, y: e.clientY};
+            this.currentMousePosition = { x: e.clientX, y: e.clientY };
         };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
@@ -92,10 +92,10 @@ class RaylibJs {
             if (this.quit) {
                 this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
                 window.removeEventListener("keydown", keyDown);
-                this.#reset()
+                this.#reset();
                 return;
             }
-            this.dt = (timestamp - this.previous)/1000.0;
+            this.dt = (timestamp - this.previous) / 1000.0;
             this.previous = timestamp;
             this.entryFunction();
             window.requestAnimationFrame(next);
@@ -108,13 +108,13 @@ class RaylibJs {
 
     async start({ wasmPath, canvasId }) {
         let wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this)
+            env: make_environment(this),
         });
 
-        this.startExports( {
+        this.startExports({
             exports: wasm.instance.exports,
             canvasId,
-        })
+        });
     }
 
     InitWindow(width, height, title_ptr) {
@@ -124,7 +124,7 @@ class RaylibJs {
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
 
-    WindowShouldClose(){
+    WindowShouldClose() {
         return false;
     }
 
@@ -144,7 +144,7 @@ class RaylibJs {
     GetFrameTime() {
         // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
         // We need a proper handling of Target FPS here.
-        return Math.min(this.dt, 1.0/this.targetFPS);
+        return Math.min(this.dt, 1.0 / this.targetFPS);
     }
 
     BeginDrawing() {}
@@ -161,7 +161,7 @@ class RaylibJs {
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
         const color = color_hex_unpacked(r, g, b, a);
         this.ctx.beginPath();
-        this.ctx.arc(x, y, radius, 0, 2*Math.PI, false);
+        this.ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
         this.ctx.fillStyle = color;
         this.ctx.fill();
     }
@@ -181,9 +181,9 @@ class RaylibJs {
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
         this.ctx.font = `${fontSize}px grixel`;
 
-        const lines = text.split('\n');
+        const lines = text.split("\n");
         for (var i = 0; i < lines.length; i++) {
-            this.ctx.fillText(lines[i], posX, posY + fontSize + (i * fontSize));
+            this.ctx.fillText(lines[i], posX, posY + fontSize + i * fontSize);
         }
     }
 
@@ -211,30 +211,45 @@ class RaylibJs {
         return this.currentPressedKeyState.has(key);
     }
     GetMouseWheelMove() {
-      return this.currentMouseWheelMoveState;
+        return this.currentMouseWheelMoveState;
     }
     IsGestureDetected() {
         return false;
     }
 
-    TextFormat(... args){ 
+    TextFormat(...args) {
         // TODO: Implement printf style formatting for TextFormat
         return args[0];
     }
 
-    TraceLog(logLevel, text_ptr, ... args) {
+    TraceLog(logLevel, text_ptr, ...args) {
         // TODO: Implement printf style formatting for TraceLog
         const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        switch(logLevel) {
-        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
-        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
-        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
-        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
-        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
-        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
-        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
-        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
+        switch (logLevel) {
+            case LOG_ALL:
+                console.log(`ALL: ${text} ${args}`);
+                break;
+            case LOG_TRACE:
+                console.log(`TRACE: ${text} ${args}`);
+                break;
+            case LOG_DEBUG:
+                console.log(`DEBUG: ${text} ${args}`);
+                break;
+            case LOG_INFO:
+                console.log(`INFO: ${text} ${args}`);
+                break;
+            case LOG_WARNING:
+                console.log(`WARNING: ${text} ${args}`);
+                break;
+            case LOG_ERROR:
+                console.log(`ERROR: ${text} ${args}`);
+                break;
+            case LOG_FATAL:
+                throw new Error(`FATAL: ${text}`);
+            case LOG_NONE:
+                console.log(`NONE: ${text} ${args}`);
+                break;
         }
     }
 
@@ -251,13 +266,13 @@ class RaylibJs {
         const buffer = this.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, point_ptr, 2);
         const [rx, ry, rw, rh] = new Float32Array(buffer, rec_ptr, 4);
-        return ((x >= rx) && x <= (rx + rw) && (y >= ry) && y <= (ry + rh));
+        return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
     }
 
     Fade(result_ptr, color_ptr, alpha) {
         const buffer = this.exports.memory.buffer;
         const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
-        const newA = Math.max(0, Math.min(255, 255.0*alpha));
+        const newA = Math.max(0, Math.min(255, 255.0 * alpha));
         new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
     }
 
@@ -275,7 +290,7 @@ class RaylibJs {
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = lineThick;
-        this.ctx.strokeRect(x + lineThick/2, y + lineThick/2, w - lineThick, h - lineThick);
+        this.ctx.strokeRect(x + lineThick / 2, y + lineThick / 2, w - lineThick, h - lineThick);
     }
 
     MeasureText(text_ptr, fontSize) {
@@ -291,8 +306,8 @@ class RaylibJs {
         const text = cstr_by_ptr(buffer, text_ptr);
         const subtext = text.substring(position, length);
 
-        var bytes = new Uint8Array(buffer, 0, subtext.length+1);
-        for(var i = 0; i < subtext.length; i++) {
+        var bytes = new Uint8Array(buffer, 0, subtext.length + 1);
+        for (var i = 0; i < subtext.length; i++) {
             bytes[i] = subtext.charCodeAt(i);
         }
         bytes[subtext.length] = 0;
@@ -305,7 +320,7 @@ class RaylibJs {
         const buffer = this.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
-        var result = new Uint32Array(buffer, result_ptr, 5)
+        var result = new Uint32Array(buffer, result_ptr, 5);
         var img = new Image();
         img.src = filename;
         this.images.push(img);
@@ -331,7 +346,7 @@ class RaylibJs {
     }
 
     // TODO: codepoints are not implemented
-    LoadFontEx(result_ptr, fileName_ptr/*, fontSize, codepoints, codepointCount*/) {
+    LoadFontEx(result_ptr, fileName_ptr /*, fontSize, codepoints, codepointCount*/) {
         const buffer = this.exports.memory.buffer;
         const fileName = cstr_by_ptr(buffer, fileName_ptr);
         // TODO: dynamically generate the name for the font
@@ -348,8 +363,8 @@ class RaylibJs {
         const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const result = new Float32Array(buffer, result_ptr, 2);
-        this.ctx.font = fontSize+"px myfont";
-        const metrics = this.ctx.measureText(text)
+        this.ctx.font = fontSize + "px myfont";
+        const metrics = this.ctx.measureText(text);
         result[0] = metrics.width;
         result[1] = fontSize;
     }
@@ -360,12 +375,12 @@ class RaylibJs {
         const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
         this.ctx.fillStyle = tint;
-        this.ctx.font = fontSize+"px myfont";
+        this.ctx.font = fontSize + "px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
     GetRandomValue(min, max) {
-        return min + Math.floor(Math.random()*(max - min + 1));
+        return min + Math.floor(Math.random() * (max - min + 1));
     }
 
     ColorFromHSV(result_ptr, hue, saturation, value) {
@@ -373,28 +388,28 @@ class RaylibJs {
         const result = new Uint8Array(buffer, result_ptr, 4);
 
         // Red channel
-        let k = (5.0 + hue/60.0)%6;
+        let k = (5.0 + hue / 60.0) % 6;
         let t = 4.0 - k;
-        k = (t < k)? t : k;
-        k = (k < 1)? k : 1;
-        k = (k > 0)? k : 0;
-        result[0] = Math.floor((value - value*saturation*k)*255.0);
+        k = t < k ? t : k;
+        k = k < 1 ? k : 1;
+        k = k > 0 ? k : 0;
+        result[0] = Math.floor((value - value * saturation * k) * 255.0);
 
         // Green channel
-        k = (3.0 + hue/60.0)%6;
+        k = (3.0 + hue / 60.0) % 6;
         t = 4.0 - k;
-        k = (t < k)? t : k;
-        k = (k < 1)? k : 1;
-        k = (k > 0)? k : 0;
-        result[1] = Math.floor((value - value*saturation*k)*255.0);
+        k = t < k ? t : k;
+        k = k < 1 ? k : 1;
+        k = k > 0 ? k : 0;
+        result[1] = Math.floor((value - value * saturation * k) * 255.0);
 
         // Blue channel
-        k = (1.0 + hue/60.0)%6;
+        k = (1.0 + hue / 60.0) % 6;
         t = 4.0 - k;
-        k = (t < k)? t : k;
-        k = (k < 1)? k : 1;
-        k = (k > 0)? k : 0;
-        result[2] = Math.floor((value - value*saturation*k)*255.0);
+        k = t < k ? t : k;
+        k = k < 1 ? k : 1;
+        k = k > 0 ? k : 0;
+        result[2] = Math.floor((value - value * saturation * k) * 255.0);
 
         result[3] = 255;
     }
@@ -405,128 +420,128 @@ class RaylibJs {
 }
 
 const glfwKeyMapping = {
-    "Space":          32,
-    "Quote":          39,
-    "Comma":          44,
-    "Minus":          45,
-    "Period":         46,
-    "Slash":          47,
-    "Digit0":         48,
-    "Digit1":         49,
-    "Digit2":         50,
-    "Digit3":         51,
-    "Digit4":         52,
-    "Digit5":         53,
-    "Digit6":         54,
-    "Digit7":         55,
-    "Digit8":         56,
-    "Digit9":         57,
-    "Semicolon":      59,
-    "Equal":          61,
-    "KeyA":           65,
-    "KeyB":           66,
-    "KeyC":           67,
-    "KeyD":           68,
-    "KeyE":           69,
-    "KeyF":           70,
-    "KeyG":           71,
-    "KeyH":           72,
-    "KeyI":           73,
-    "KeyJ":           74,
-    "KeyK":           75,
-    "KeyL":           76,
-    "KeyM":           77,
-    "KeyN":           78,
-    "KeyO":           79,
-    "KeyP":           80,
-    "KeyQ":           81,
-    "KeyR":           82,
-    "KeyS":           83,
-    "KeyT":           84,
-    "KeyU":           85,
-    "KeyV":           86,
-    "KeyW":           87,
-    "KeyX":           88,
-    "KeyY":           89,
-    "KeyZ":           90,
-    "BracketLeft":    91,
-    "Backslash":      92,
-    "BracketRight":   93,
-    "Backquote":      96,
+    Space: 32,
+    Quote: 39,
+    Comma: 44,
+    Minus: 45,
+    Period: 46,
+    Slash: 47,
+    Digit0: 48,
+    Digit1: 49,
+    Digit2: 50,
+    Digit3: 51,
+    Digit4: 52,
+    Digit5: 53,
+    Digit6: 54,
+    Digit7: 55,
+    Digit8: 56,
+    Digit9: 57,
+    Semicolon: 59,
+    Equal: 61,
+    KeyA: 65,
+    KeyB: 66,
+    KeyC: 67,
+    KeyD: 68,
+    KeyE: 69,
+    KeyF: 70,
+    KeyG: 71,
+    KeyH: 72,
+    KeyI: 73,
+    KeyJ: 74,
+    KeyK: 75,
+    KeyL: 76,
+    KeyM: 77,
+    KeyN: 78,
+    KeyO: 79,
+    KeyP: 80,
+    KeyQ: 81,
+    KeyR: 82,
+    KeyS: 83,
+    KeyT: 84,
+    KeyU: 85,
+    KeyV: 86,
+    KeyW: 87,
+    KeyX: 88,
+    KeyY: 89,
+    KeyZ: 90,
+    BracketLeft: 91,
+    Backslash: 92,
+    BracketRight: 93,
+    Backquote: 96,
     //  GLFW_KEY_WORLD_1   161 /* non-US #1 */
     //  GLFW_KEY_WORLD_2   162 /* non-US #2 */
-    "Escape":         256,
-    "Enter":          257,
-    "Tab":            258,
-    "Backspace":      259,
-    "Insert":         260,
-    "Delete":         261,
-    "ArrowRight":     262,
-    "ArrowLeft":      263,
-    "ArrowDown":      264,
-    "ArrowUp":        265,
-    "PageUp":         266,
-    "PageDown":       267,
-    "Home":           268,
-    "End":            269,
-    "CapsLock":       280,
-    "ScrollLock":     281,
-    "NumLock":        282,
-    "PrintScreen":    283,
-    "Pause":          284,
-    "F1":             290,
-    "F2":             291,
-    "F3":             292,
-    "F4":             293,
-    "F5":             294,
-    "F6":             295,
-    "F7":             296,
-    "F8":             297,
-    "F9":             298,
-    "F10":            299,
-    "F11":            300,
-    "F12":            301,
-    "F13":            302,
-    "F14":            303,
-    "F15":            304,
-    "F16":            305,
-    "F17":            306,
-    "F18":            307,
-    "F19":            308,
-    "F20":            309,
-    "F21":            310,
-    "F22":            311,
-    "F23":            312,
-    "F24":            313,
-    "F25":            314,
-    "NumPad0":        320,
-    "NumPad1":        321,
-    "NumPad2":        322,
-    "NumPad3":        323,
-    "NumPad4":        324,
-    "NumPad5":        325,
-    "NumPad6":        326,
-    "NumPad7":        327,
-    "NumPad8":        328,
-    "NumPad9":        329,
-    "NumpadDecimal":  330,
-    "NumpadDivide":   331,
-    "NumpadMultiply": 332,
-    "NumpadSubtract": 333,
-    "NumpadAdd":      334,
-    "NumpadEnter":    335,
-    "NumpadEqual":    336,
-    "ShiftLeft":      340,
-    "ControlLeft" :   341,
-    "AltLeft":        342,
-    "MetaLeft":       343,
-    "ShiftRight":     344,
-    "ControlRight":   345,
-    "AltRight":       346,
-    "MetaRight":      347,
-    "ContextMenu":    348,
+    Escape: 256,
+    Enter: 257,
+    Tab: 258,
+    Backspace: 259,
+    Insert: 260,
+    Delete: 261,
+    ArrowRight: 262,
+    ArrowLeft: 263,
+    ArrowDown: 264,
+    ArrowUp: 265,
+    PageUp: 266,
+    PageDown: 267,
+    Home: 268,
+    End: 269,
+    CapsLock: 280,
+    ScrollLock: 281,
+    NumLock: 282,
+    PrintScreen: 283,
+    Pause: 284,
+    F1: 290,
+    F2: 291,
+    F3: 292,
+    F4: 293,
+    F5: 294,
+    F6: 295,
+    F7: 296,
+    F8: 297,
+    F9: 298,
+    F10: 299,
+    F11: 300,
+    F12: 301,
+    F13: 302,
+    F14: 303,
+    F15: 304,
+    F16: 305,
+    F17: 306,
+    F18: 307,
+    F19: 308,
+    F20: 309,
+    F21: 310,
+    F22: 311,
+    F23: 312,
+    F24: 313,
+    F25: 314,
+    NumPad0: 320,
+    NumPad1: 321,
+    NumPad2: 322,
+    NumPad3: 323,
+    NumPad4: 324,
+    NumPad5: 325,
+    NumPad6: 326,
+    NumPad7: 327,
+    NumPad8: 328,
+    NumPad9: 329,
+    NumpadDecimal: 330,
+    NumpadDivide: 331,
+    NumpadMultiply: 332,
+    NumpadSubtract: 333,
+    NumpadAdd: 334,
+    NumpadEnter: 335,
+    NumpadEqual: 336,
+    ShiftLeft: 340,
+    ControlLeft: 341,
+    AltLeft: 342,
+    MetaLeft: 343,
+    ShiftRight: 344,
+    ControlRight: 345,
+    AltRight: 346,
+    MetaRight: 347,
+    ContextMenu: 348,
     //  GLFW_KEY_LAST   GLFW_KEY_MENU
-}
+};
 
 function cstrlen(mem, ptr) {
     let len = 0;
@@ -545,19 +560,19 @@ function cstr_by_ptr(mem_buffer, ptr) {
 }
 
 function color_hex_unpacked(r, g, b, a) {
-    r = r.toString(16).padStart(2, '0');
-    g = g.toString(16).padStart(2, '0');
-    b = b.toString(16).padStart(2, '0');
-    a = a.toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
+    r = r.toString(16).padStart(2, "0");
+    g = g.toString(16).padStart(2, "0");
+    b = b.toString(16).padStart(2, "0");
+    a = a.toString(16).padStart(2, "0");
+    return "#" + r + g + b + a;
 }
 
 function color_hex(color) {
-    const r = ((color>>(0*8))&0xFF).toString(16).padStart(2, '0');
-    const g = ((color>>(1*8))&0xFF).toString(16).padStart(2, '0');
-    const b = ((color>>(2*8))&0xFF).toString(16).padStart(2, '0');
-    const a = ((color>>(3*8))&0xFF).toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
+    const r = ((color >> (0 * 8)) & 0xff).toString(16).padStart(2, "0");
+    const g = ((color >> (1 * 8)) & 0xff).toString(16).padStart(2, "0");
+    const b = ((color >> (2 * 8)) & 0xff).toString(16).padStart(2, "0");
+    const a = ((color >> (3 * 8)) & 0xff).toString(16).padStart(2, "0");
+    return "#" + r + g + b + a;
 }
 
 function getColorFromMemory(buffer, color_ptr) {

@@ -1,37 +1,36 @@
 /*******************************************************************************************
-*
-*   raylib [shapes] example - Colors palette
-*
-*   Example originally created with raylib 1.0, last time updated with raylib 2.5
-*
-*   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
-*   BSD-like license that allows static linking with closed source software
-*
-*   Copyright (c) 2014-2024 Ramon Santamaria (@raysan5)
-*
-********************************************************************************************/
+ *
+ *   raylib [shapes] example - Colors palette
+ *
+ *   Example originally created with raylib 1.0, last time updated with raylib 2.5
+ *
+ *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
+ *   BSD-like license that allows static linking with closed source software
+ *
+ *   Copyright (c) 2014-2024 Ramon Santamaria (@raysan5)
+ *
+ ********************************************************************************************/
 
 #include "raylib.h"
-#define MAX_COLORS_COUNT    21          // Number of colors available
+#define MAX_COLORS_COUNT 21 // Number of colors available
 
 void raylib_js_set_entry(void (*entry)(void));
 
 Color colors[MAX_COLORS_COUNT] = {
     DARKGRAY, MAROON, ORANGE, DARKGREEN, DARKBLUE, DARKPURPLE, DARKBROWN,
     GRAY, RED, GOLD, LIME, BLUE, VIOLET, BROWN, LIGHTGRAY, PINK, YELLOW,
-    GREEN, SKYBLUE, PURPLE, BEIGE };
+    GREEN, SKYBLUE, PURPLE, BEIGE};
 
 const char *colorNames[MAX_COLORS_COUNT] = {
     "DARKGRAY", "MAROON", "ORANGE", "DARKGREEN", "DARKBLUE", "DARKPURPLE",
     "DARKBROWN", "GRAY", "RED", "GOLD", "LIME", "BLUE", "VIOLET", "BROWN",
-    "LIGHTGRAY", "PINK", "YELLOW", "GREEN", "SKYBLUE", "PURPLE", "BEIGE" };
+    "LIGHTGRAY", "PINK", "YELLOW", "GREEN", "SKYBLUE", "PURPLE", "BEIGE"};
 
-Rectangle colorsRecs[MAX_COLORS_COUNT] = { 0 };     // Rectangles array
+Rectangle colorsRecs[MAX_COLORS_COUNT] = {0}; // Rectangles array
 
-int colorState[MAX_COLORS_COUNT] = { 0 };           // Color state: 0-DEFAULT, 1-MOUSE_HOVER
+int colorState[MAX_COLORS_COUNT] = {0}; // Color state: 0-DEFAULT, 1-MOUSE_HOVER
 
-Vector2 mousePoint = { 0.0f, 0.0f };
-
+Vector2 mousePoint = {0.0f, 0.0f};
 
 void GameFrame()
 {
@@ -39,10 +38,11 @@ void GameFrame()
     //----------------------------------------------------------------------------------
     mousePoint = GetMousePosition();
 
-    for (int i = 0; i < MAX_COLORS_COUNT; i++)
-    {
-        if (CheckCollisionPointRec(mousePoint, colorsRecs[i])) colorState[i] = 1;
-        else colorState[i] = 0;
+    for (int i = 0; i < MAX_COLORS_COUNT; i++) {
+        if (CheckCollisionPointRec(mousePoint, colorsRecs[i]))
+            colorState[i] = 1;
+        else
+            colorState[i] = 0;
     }
     //----------------------------------------------------------------------------------
 
@@ -50,28 +50,26 @@ void GameFrame()
     //----------------------------------------------------------------------------------
     BeginDrawing();
 
-        ClearBackground(RAYWHITE);
+    ClearBackground(RAYWHITE);
 
-        DrawText("raylib colors palette", 28, 42, 20, BLACK);
-        DrawText("press SPACE to see all colors", GetScreenWidth() - 180, GetScreenHeight() - 40, 10, GRAY);
+    DrawText("raylib colors palette", 28, 42, 20, BLACK);
+    DrawText("press SPACE to see all colors", GetScreenWidth() - 180, GetScreenHeight() - 40, 10, GRAY);
 
-        for (int i = 0; i < MAX_COLORS_COUNT; i++)    // Draw all rectangles
-        {
-            DrawRectangleRec(colorsRecs[i], Fade(colors[i], colorState[i]? 0.6f : 1.0f));
+    for (int i = 0; i < MAX_COLORS_COUNT; i++) // Draw all rectangles
+    {
+        DrawRectangleRec(colorsRecs[i], Fade(colors[i], colorState[i] ? 0.6f : 1.0f));
 
-            if (IsKeyDown(KEY_SPACE) || colorState[i])
-            {
-                DrawRectangle((int)colorsRecs[i].x, (int)(colorsRecs[i].y + colorsRecs[i].height - 26), (int)colorsRecs[i].width, 20, BLACK);
-                DrawRectangleLinesEx(colorsRecs[i], 6, Fade(BLACK, 0.3f));
-                DrawText(colorNames[i], (int)(colorsRecs[i].x + colorsRecs[i].width - MeasureText(colorNames[i], 10) - 12),
-                    (int)(colorsRecs[i].y + colorsRecs[i].height - 20), 10, colors[i]);
-            }
+        if (IsKeyDown(KEY_SPACE) || colorState[i]) {
+            DrawRectangle((int)colorsRecs[i].x, (int)(colorsRecs[i].y + colorsRecs[i].height - 26), (int)colorsRecs[i].width, 20, BLACK);
+            DrawRectangleLinesEx(colorsRecs[i], 6, Fade(BLACK, 0.3f));
+            DrawText(colorNames[i], (int)(colorsRecs[i].x + colorsRecs[i].width - MeasureText(colorNames[i], 10) - 12),
+                     (int)(colorsRecs[i].y + colorsRecs[i].height - 20), 10, colors[i]);
         }
+    }
 
     EndDrawing();
     //----------------------------------------------------------------------------------
 }
-
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -85,32 +83,28 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "raylib [shapes] example - colors palette");
 
-
     // Fills colorsRecs data (for every rectangle)
-    for (int i = 0; i < MAX_COLORS_COUNT; i++)
-    {
-        colorsRecs[i].x = 20.0f + 100.0f *(i%7) + 10.0f *(i%7);
-        colorsRecs[i].y = 80.0f + 100.0f *(i/7) + 10.0f *(i/7);
+    for (int i = 0; i < MAX_COLORS_COUNT; i++) {
+        colorsRecs[i].x = 20.0f + 100.0f * (i % 7) + 10.0f * (i % 7);
+        colorsRecs[i].y = 80.0f + 100.0f * (i / 7) + 10.0f * (i / 7);
         colorsRecs[i].width = 100.0f;
         colorsRecs[i].height = 100.0f;
     }
 
-
-
-    SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+    SetTargetFPS(60); // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
 #ifdef PLATFORM_WEB
     raylib_js_set_entry(GameFrame);
 #else
     // Main game loop
-    while (!WindowShouldClose())    // Detect window close button or ESC key
+    while (!WindowShouldClose()) // Detect window close button or ESC key
     {
         GameFrame();
     }
     // De-Initialization
     //--------------------------------------------------------------------------------------
-    CloseWindow();                // Close window and OpenGL context
+    CloseWindow(); // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 #endif
     return 0;

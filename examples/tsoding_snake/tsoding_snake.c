@@ -11,11 +11,11 @@
 #define FALSE 0
 
 static char logf_buf[4096] = {0};
-#define LOGF(...) \
-    do { \
+#define LOGF(...)                                                \
+    do {                                                         \
         stbsp_snprintf(logf_buf, sizeof(logf_buf), __VA_ARGS__); \
-        platform_log(logf_buf); \
-    } while(0)
+        platform_log(logf_buf);                                  \
+    } while (0)
 
 static void platform_assert(const char *file, i32 line, b32 cond, const char *message)
 {
@@ -58,9 +58,14 @@ static void fill_text_aligned(i32 x, i32 y, const char *text, u32 size, u32 colo
 {
     u32 width = platform_text_width(text, size);
     switch (align) {
-    case ALIGN_LEFT:                 break;
-    case ALIGN_CENTER: x -= width/2; break;
-    case ALIGN_RIGHT:  x -= width;   break;
+    case ALIGN_LEFT:
+        break;
+    case ALIGN_CENTER:
+        x -= width / 2;
+        break;
+    case ALIGN_RIGHT:
+        x -= width;
+        break;
     }
     platform_fill_text(x, y, text, size, color);
 }
@@ -68,8 +73,8 @@ static void fill_text_aligned(i32 x, i32 y, const char *text, u32 size, u32 colo
 static u32 my_rand(void)
 {
     static u64 rand_state = 0;
-    rand_state = rand_state*RAND_A + RAND_C;
-    return (rand_state >> 32)&0xFFFFFFFF;
+    rand_state = rand_state * RAND_A + RAND_C;
+    return (rand_state >> 32) & 0xFFFFFFFF;
 }
 
 static void *memset(void *mem, u32 c, u32 n)
@@ -91,7 +96,7 @@ typedef enum {
 static Dir dir_opposite(Dir dir)
 {
     ASSERT(0 <= dir && dir < COUNT_DIRS, "Invalid direction");
-    return (dir + 2)%COUNT_DIRS;
+    return (dir + 2) % COUNT_DIRS;
 }
 
 typedef struct {
@@ -106,12 +111,11 @@ static Sides rect_sides(Rect rect)
 {
     Sides sides = {
         .lens = {
-            [DIR_LEFT]  = rect.x,
+            [DIR_LEFT] = rect.x,
             [DIR_RIGHT] = rect.x + rect.w,
-            [DIR_UP]    = rect.y,
-            [DIR_DOWN]  = rect.y + rect.h,
-        }
-    };
+            [DIR_UP] = rect.y,
+            [DIR_DOWN] = rect.y + rect.h,
+        }};
     return sides;
 }
 
@@ -134,7 +138,7 @@ typedef struct {
     f32 x, y;
 } Vec;
 
-#define SNAKE_CAP (ROWS*COLS)
+#define SNAKE_CAP (ROWS * COLS)
 typedef struct {
     Cell items[SNAKE_CAP];
     u32 begin;
@@ -195,8 +199,8 @@ static Game game = {0};
 static Rect cell_rect(Cell cell)
 {
     Rect result = {
-        .x = cell.x*CELL_SIZE,
-        .y = cell.y*CELL_SIZE,
+        .x = cell.x * CELL_SIZE,
+        .y = cell.y * CELL_SIZE,
         .w = CELL_SIZE,
         .h = CELL_SIZE,
     };
@@ -205,43 +209,43 @@ static Rect cell_rect(Cell cell)
 
 #define ring_empty(ring) ((ring)->size == 0)
 
-#define ring_cap(ring) (sizeof((ring)->items)/sizeof((ring)->items[0]))
+#define ring_cap(ring) (sizeof((ring)->items) / sizeof((ring)->items[0]))
 
-#define ring_push_back(ring, item) \
-    do { \
+#define ring_push_back(ring, item)                                     \
+    do {                                                               \
         ASSERT((ring)->size < ring_cap(ring), "Ring buffer overflow"); \
-        u32 index = ((ring)->begin + (ring)->size)%ring_cap(ring); \
-        (ring)->items[index] = (item); \
-        (ring)->size += 1; \
+        u32 index = ((ring)->begin + (ring)->size) % ring_cap(ring);   \
+        (ring)->items[index] = (item);                                 \
+        (ring)->size += 1;                                             \
     } while (0)
 
-#define ring_displace_back(ring, item) \
-    do { \
-        u32 index = ((ring)->begin + (ring)->size)%ring_cap(ring); \
-        (ring)->items[index] = (item); \
-        if ((ring)->size < ring_cap(ring)) { \
-            (ring)->size += 1; \
-        } else { \
-            (ring)->begin = ((ring)->begin + 1)%ring_cap(ring); \
-        } \
+#define ring_displace_back(ring, item)                               \
+    do {                                                             \
+        u32 index = ((ring)->begin + (ring)->size) % ring_cap(ring); \
+        (ring)->items[index] = (item);                               \
+        if ((ring)->size < ring_cap(ring)) {                         \
+            (ring)->size += 1;                                       \
+        } else {                                                     \
+            (ring)->begin = ((ring)->begin + 1) % ring_cap(ring);    \
+        }                                                            \
     } while (0)
 
-#define ring_pop_front(ring) \
-    do { \
-        ASSERT((ring)->size > 0, "Ring buffer underflow"); \
-        (ring)->begin = ((ring)->begin + 1)%ring_cap(ring); \
-        (ring)->size -= 1; \
+#define ring_pop_front(ring)                                  \
+    do {                                                      \
+        ASSERT((ring)->size > 0, "Ring buffer underflow");    \
+        (ring)->begin = ((ring)->begin + 1) % ring_cap(ring); \
+        (ring)->size -= 1;                                    \
     } while (0)
 
-#define ring_back(ring) \
+#define ring_back(ring)                                \
     (ASSERT((ring)->size > 0, "Ring buffer is empty"), \
-     &(ring)->items[((ring)->begin + (ring)->size - 1)%ring_cap(ring)])
-#define ring_front(ring) \
+     &(ring)->items[((ring)->begin + (ring)->size - 1) % ring_cap(ring)])
+#define ring_front(ring)                               \
     (ASSERT((ring)->size > 0, "Ring buffer is empty"), \
      &(ring)->items[(ring)->begin])
-#define ring_get(ring, index) \
+#define ring_get(ring, index)                          \
     (ASSERT((ring)->size > 0, "Ring buffer is empty"), \
-     &(ring)->items[((ring)->begin + (index))%ring_cap(ring)])
+     &(ring)->items[((ring)->begin + (index)) % ring_cap(ring)])
 
 static b32 cell_eq(Cell a, Cell b)
 {
@@ -261,7 +265,7 @@ static i32 is_cell_snake_body(Cell cell)
 
 static i32 emod(i32 a, i32 b)
 {
-    return (a%b + b)%b;
+    return (a % b + b) % b;
 }
 
 static Cell cell_wrap(Cell cell)
@@ -272,10 +276,10 @@ static Cell cell_wrap(Cell cell)
 }
 
 static Cell dir_cell_data[COUNT_DIRS] = {
-    [DIR_LEFT]  = {.x = -1},
-    [DIR_RIGHT] = {.x =  1},
-    [DIR_UP]    = {.y = -1},
-    [DIR_DOWN]  = {.y =  1},
+    [DIR_LEFT] = {.x = -1},
+    [DIR_RIGHT] = {.x = 1},
+    [DIR_UP] = {.y = -1},
+    [DIR_DOWN] = {.y = 1},
 };
 
 static Cell cell_add(Cell a, Cell b)
@@ -285,7 +289,7 @@ static Cell cell_add(Cell a, Cell b)
     return a;
 }
 
-#define dir_cell(dir) (ASSERT((u32) dir < COUNT_DIRS, "Invalid direction"), dir_cell_data[dir])
+#define dir_cell(dir) (ASSERT((u32)dir < COUNT_DIRS, "Invalid direction"), dir_cell_data[dir])
 #define dir_vec(dir) cell_vec(dir_cell(dir))
 
 static Cell step_cell(Cell head, Dir dir)
@@ -297,7 +301,7 @@ static Cell step_cell(Cell head, Dir dir)
     }
 }
 
-#define SNAKE_INIT_ROW (ROWS/2)
+#define SNAKE_INIT_ROW (ROWS / 2)
 
 static void random_egg(b32 first)
 {
@@ -308,17 +312,17 @@ static void random_egg(b32 first)
 
     // TODO: make a single formula that works for any mode
     if (game.infinite_field) {
-        col1 = (i32)(game.camera_pos.x - game.width*0.5f + CELL_SIZE)/CELL_SIZE;
-        col2 = (i32)(game.camera_pos.x + game.width*0.5f - CELL_SIZE)/CELL_SIZE;
-        row1 = (i32)(game.camera_pos.y - game.height*0.5f + CELL_SIZE)/CELL_SIZE;
-        row2 = (i32)(game.camera_pos.y + game.height*0.5f - CELL_SIZE)/CELL_SIZE;
+        col1 = (i32)(game.camera_pos.x - game.width * 0.5f + CELL_SIZE) / CELL_SIZE;
+        col2 = (i32)(game.camera_pos.x + game.width * 0.5f - CELL_SIZE) / CELL_SIZE;
+        row1 = (i32)(game.camera_pos.y - game.height * 0.5f + CELL_SIZE) / CELL_SIZE;
+        row2 = (i32)(game.camera_pos.y + game.height * 0.5f - CELL_SIZE) / CELL_SIZE;
     }
 
 #define RANDOM_EGG_MAX_ATTEMPTS 1000
     u32 attempt = 0;
     do {
-        game.egg.x = my_rand()%(col2 - col1 + 1) + col1;
-        game.egg.y = my_rand()%(row2 - row1 + 1) + row1;
+        game.egg.x = my_rand() % (col2 - col1 + 1) + col1;
+        game.egg.y = my_rand() % (row2 - row1 + 1) + row1;
         attempt += 1;
     } while ((is_cell_snake_body(game.egg) >= 0 || (first && game.egg.y == SNAKE_INIT_ROW)) && attempt < RANDOM_EGG_MAX_ATTEMPTS);
 
@@ -334,10 +338,10 @@ static void game_restart(u32 width, u32 height)
     game.dt_scale = 1.0f;
 #endif
 
-    game.width        = width;
-    game.height       = height;
-    game.camera_pos.x = width/2;
-    game.camera_pos.y = height/2;
+    game.width = width;
+    game.height = height;
+    game.camera_pos.x = width / 2;
+    game.camera_pos.y = height / 2;
 
     for (u32 i = 0; i < SNAKE_INIT_SIZE; ++i) {
         Cell head = {.x = i, .y = SNAKE_INIT_ROW};
@@ -352,19 +356,19 @@ static void game_restart(u32 width, u32 height)
 
 static f32 lerpf(f32 a, f32 b, f32 t)
 {
-    return (b - a)*t + a;
+    return (b - a) * t + a;
 }
 
 static f32 ilerpf(f32 a, f32 b, f32 v)
 {
-    return (v - a)/(b - a);
+    return (v - a) / (b - a);
 }
 
 static void fill_rect(Rect rect, u32 color)
 {
     platform_fill_rect(
-        rect.x - game.camera_pos.x + game.width/2,
-        rect.y - game.camera_pos.y + game.height/2,
+        rect.x - game.camera_pos.x + game.width / 2,
+        rect.y - game.camera_pos.y + game.height / 2,
         rect.w, rect.h, color);
 }
 
@@ -372,16 +376,16 @@ static void fill_rect(Rect rect, u32 color)
 static void stroke_rect(Rect rect, u32 color)
 {
     platform_stroke_rect(
-        rect.x - game.camera_pos.x + game.width/2,
-        rect.y - game.camera_pos.y + game.height/2,
+        rect.x - game.camera_pos.x + game.width / 2,
+        rect.y - game.camera_pos.y + game.height / 2,
         rect.w, rect.h, color);
 }
 #endif
 
 static Rect scale_rect(Rect r, float a)
 {
-    r.x = lerpf(r.x, r.x + r.w*0.5f, 1.0f - a);
-    r.y = lerpf(r.y, r.y + r.h*0.5f, 1.0f - a);
+    r.x = lerpf(r.x, r.x + r.w * 0.5f, 1.0f - a);
+    r.y = lerpf(r.y, r.y + r.h * 0.5f, 1.0f - a);
     r.w = lerpf(0.0f, r.w, a);
     r.h = lerpf(0.0f, r.h, a);
     return r;
@@ -408,58 +412,56 @@ static Dir cells_dir(Cell a, Cell b)
 
 static Vec cell_center(Cell a)
 {
-    return (Vec) {
-        .x = a.x*CELL_SIZE + CELL_SIZE/2,
-        .y = a.y*CELL_SIZE + CELL_SIZE/2,
+    return (Vec){
+        .x = a.x * CELL_SIZE + CELL_SIZE / 2,
+        .y = a.y * CELL_SIZE + CELL_SIZE / 2,
     };
 }
 
 static Sides slide_sides(Sides sides, Dir dir, f32 a)
 {
     f32 d = sides.lens[dir] - sides.lens[dir_opposite(dir)];
-    sides.lens[dir]               += lerpf(0, d, a);
+    sides.lens[dir] += lerpf(0, d, a);
     sides.lens[dir_opposite(dir)] += lerpf(0, d, a);
     return sides;
 }
 
 Vec sides_center(Sides sides)
 {
-    return (Vec) {
-        .x = sides.lens[DIR_LEFT] + (sides.lens[DIR_RIGHT] - sides.lens[DIR_LEFT])*0.5f,
-        .y = sides.lens[DIR_UP] + (sides.lens[DIR_DOWN] - sides.lens[DIR_UP])*0.5f,
+    return (Vec){
+        .x = sides.lens[DIR_LEFT] + (sides.lens[DIR_RIGHT] - sides.lens[DIR_LEFT]) * 0.5f,
+        .y = sides.lens[DIR_UP] + (sides.lens[DIR_DOWN] - sides.lens[DIR_UP]) * 0.5f,
     };
 }
 
 static void fill_spine(Vec center, Dir dir, float len)
 {
-    f32 thicc = CELL_SIZE*SNAKE_SPINE_THICCNESS_PERCENT;
+    f32 thicc = CELL_SIZE * SNAKE_SPINE_THICCNESS_PERCENT;
     Sides sides = {
         .lens = {
-            [DIR_LEFT]   = center.x - thicc,
-            [DIR_RIGHT]  = center.x + thicc,
-            [DIR_UP]     = center.y - thicc,
-            [DIR_DOWN]   = center.y + thicc,
-        }
-    };
+            [DIR_LEFT] = center.x - thicc,
+            [DIR_RIGHT] = center.x + thicc,
+            [DIR_UP] = center.y - thicc,
+            [DIR_DOWN] = center.y + thicc,
+        }};
     if (dir == DIR_RIGHT || dir == DIR_DOWN) sides.lens[dir] += len;
-    if (dir == DIR_LEFT  || dir == DIR_UP)   sides.lens[dir] -= len;
+    if (dir == DIR_LEFT || dir == DIR_UP) sides.lens[dir] -= len;
     fill_sides(sides, SNAKE_SPINE_COLOR);
 }
 
 static void fill_fractured_spine(Sides sides, u8 mask)
 {
-    f32 thicc = CELL_SIZE*SNAKE_SPINE_THICCNESS_PERCENT;
+    f32 thicc = CELL_SIZE * SNAKE_SPINE_THICCNESS_PERCENT;
     Vec center = sides_center(sides);
     for (Dir dir = 0; dir < COUNT_DIRS; ++dir) {
-        if (mask&(1<<dir)) {
+        if (mask & (1 << dir)) {
             Sides arm = {
                 .lens = {
-                    [DIR_LEFT]   = center.x - thicc,
-                    [DIR_RIGHT]  = center.x + thicc,
-                    [DIR_UP]     = center.y - thicc,
-                    [DIR_DOWN]   = center.y + thicc,
-                }
-            };
+                    [DIR_LEFT] = center.x - thicc,
+                    [DIR_RIGHT] = center.x + thicc,
+                    [DIR_UP] = center.y - thicc,
+                    [DIR_DOWN] = center.y + thicc,
+                }};
             arm.lens[dir] = sides.lens[dir];
             fill_sides(arm, SNAKE_SPINE_COLOR);
         }
@@ -470,19 +472,19 @@ static void snake_render(void)
 {
     f32 t = game.step_cooldown / STEP_INTEVAL;
 
-    Cell  head_cell         = *ring_back(&game.snake);
-    Sides head_sides        = rect_sides(cell_rect(head_cell));
-    Dir   head_dir          = game.dir;
+    Cell head_cell = *ring_back(&game.snake);
+    Sides head_sides = rect_sides(cell_rect(head_cell));
+    Dir head_dir = game.dir;
     Sides head_slided_sides = slide_sides(head_sides, dir_opposite(head_dir), t);
 
-    Cell  tail_cell         = *ring_front(&game.snake);
-    Sides tail_sides        = rect_sides(cell_rect(tail_cell));
-    Dir   tail_dir          = cells_dir(*ring_get(&game.snake, 0), *ring_get(&game.snake, 1));
+    Cell tail_cell = *ring_front(&game.snake);
+    Sides tail_sides = rect_sides(cell_rect(tail_cell));
+    Dir tail_dir = cells_dir(*ring_get(&game.snake, 0), *ring_get(&game.snake, 1));
     Sides tail_slided_sides = slide_sides(tail_sides, tail_dir, game.eating_egg ? 1.0f : 1.0f - t);
 
     if (game.eating_egg) {
         fill_cell(head_cell, EGG_BODY_COLOR, 1.0f);
-        fill_cell(head_cell, EGG_SPINE_COLOR, SNAKE_SPINE_THICCNESS_PERCENT*2.0f);
+        fill_cell(head_cell, EGG_SPINE_COLOR, SNAKE_SPINE_THICCNESS_PERCENT * 2.0f);
     }
 
     fill_sides(head_slided_sides, SNAKE_BODY_COLOR);
@@ -527,15 +529,18 @@ static void snake_render(void)
 
 static void background_render(void)
 {
-    i32 col1 = (i32)(game.camera_pos.x - game.width*0.5f - CELL_SIZE)/CELL_SIZE;
-    i32 col2 = (i32)(game.camera_pos.x + game.width*0.5f + CELL_SIZE)/CELL_SIZE;
-    i32 row1 = (i32)(game.camera_pos.y - game.height*0.5f - CELL_SIZE)/CELL_SIZE;
-    i32 row2 = (i32)(game.camera_pos.y + game.height*0.5f + CELL_SIZE)/CELL_SIZE;
+    i32 col1 = (i32)(game.camera_pos.x - game.width * 0.5f - CELL_SIZE) / CELL_SIZE;
+    i32 col2 = (i32)(game.camera_pos.x + game.width * 0.5f + CELL_SIZE) / CELL_SIZE;
+    i32 row1 = (i32)(game.camera_pos.y - game.height * 0.5f - CELL_SIZE) / CELL_SIZE;
+    i32 row2 = (i32)(game.camera_pos.y + game.height * 0.5f + CELL_SIZE) / CELL_SIZE;
 
     for (i32 col = col1; col <= col2; ++col) {
         for (i32 row = row1; row <= row2; ++row) {
-            u32 color = (row + col)%2 == 0 ? CELL1_COLOR : CELL2_COLOR;
-            Cell cell = { .x = col, .y = row, };
+            u32 color = (row + col) % 2 == 0 ? CELL1_COLOR : CELL2_COLOR;
+            Cell cell = {
+                .x = col,
+                .y = row,
+            };
             fill_cell(cell, color, 1.0f);
         }
     }
@@ -559,19 +564,19 @@ void game_init(u32 width, u32 height)
 
 static u32 color_alpha(u32 color, f32 a)
 {
-    return (color&0x00FFFFFF)|((u32)(a*0xFF)<<(3*8));
+    return (color & 0x00FFFFFF) | ((u32)(a * 0xFF) << (3 * 8));
 }
 
 static void egg_render(void)
 {
     if (game.eating_egg) {
-        f32 t = 1.0f - game.step_cooldown/STEP_INTEVAL;
-        f32 a = lerpf(1.5f, 1.0f, t*t);
-        fill_cell(game.egg, color_alpha(EGG_BODY_COLOR, t*t), a);
-        fill_cell(game.egg, color_alpha(EGG_SPINE_COLOR, t*t), a*(SNAKE_SPINE_THICCNESS_PERCENT*2.0f));
+        f32 t = 1.0f - game.step_cooldown / STEP_INTEVAL;
+        f32 a = lerpf(1.5f, 1.0f, t * t);
+        fill_cell(game.egg, color_alpha(EGG_BODY_COLOR, t * t), a);
+        fill_cell(game.egg, color_alpha(EGG_SPINE_COLOR, t * t), a * (SNAKE_SPINE_THICCNESS_PERCENT * 2.0f));
     } else {
         fill_cell(game.egg, EGG_BODY_COLOR, 1.0f);
-        fill_cell(game.egg, EGG_SPINE_COLOR, SNAKE_SPINE_THICCNESS_PERCENT*2.0f);
+        fill_cell(game.egg, EGG_SPINE_COLOR, SNAKE_SPINE_THICCNESS_PERCENT * 2.0f);
     }
 }
 
@@ -592,8 +597,7 @@ void game_render(void)
         egg_render();
         snake_render();
         fill_text_aligned(SCORE_PADDING, SCORE_PADDING, game.score_buffer, SCORE_FONT_SIZE, SCORE_FONT_COLOR, ALIGN_LEFT);
-    }
-    break;
+    } break;
 
     case STATE_PAUSE: {
         background_render();
@@ -601,18 +605,16 @@ void game_render(void)
         snake_render();
         fill_text_aligned(SCORE_PADDING, SCORE_PADDING, game.score_buffer, SCORE_FONT_SIZE, SCORE_FONT_COLOR, ALIGN_LEFT);
         // TODO: "Pause", "Game Over" are not centered vertically
-        fill_text_aligned(game.width/2, game.height/2, "Pause", PAUSE_FONT_SIZE, PAUSE_FONT_COLOR, ALIGN_CENTER);
-    }
-    break;
+        fill_text_aligned(game.width / 2, game.height / 2, "Pause", PAUSE_FONT_SIZE, PAUSE_FONT_COLOR, ALIGN_CENTER);
+    } break;
 
     case STATE_GAMEOVER: {
         background_render();
         egg_render();
         dead_snake_render();
         fill_text_aligned(SCORE_PADDING, SCORE_PADDING, game.score_buffer, SCORE_FONT_SIZE, SCORE_FONT_COLOR, ALIGN_LEFT);
-        fill_text_aligned(game.width/2, game.height/2, "Game Over", GAMEOVER_FONT_SIZE, GAMEOVER_FONT_COLOR, ALIGN_CENTER);
-    }
-    break;
+        fill_text_aligned(game.width / 2, game.height / 2, "Game Over", GAMEOVER_FONT_SIZE, GAMEOVER_FONT_COLOR, ALIGN_CENTER);
+    } break;
 
     default: {
         UNREACHABLE();
@@ -621,14 +623,14 @@ void game_render(void)
 
 #ifdef FEATURE_DEV
     fill_text_aligned(game.width - SCORE_PADDING, SCORE_PADDING, "Dev", SCORE_FONT_SIZE, SCORE_FONT_COLOR, ALIGN_RIGHT);
-    Rect rect = { .w = COLS*CELL_SIZE, .h = ROWS*CELL_SIZE };
+    Rect rect = {.w = COLS * CELL_SIZE, .h = ROWS * CELL_SIZE};
     stroke_rect(rect, 0xFF0000FF);
 #endif
 }
 
 static Vec vec_sub(Vec a, Vec b)
 {
-    return (Vec) {
+    return (Vec){
         .x = a.x - b.x,
         .y = a.y - b.y,
     };
@@ -643,15 +645,15 @@ static f32 fabsf(f32 x)
 static f32 sqrtf(f32 a)
 {
     float x = a;
-    for (u32 i = 0; i < 1000 && fabsf(x*x - a) > 1e-6; ++i) {
-        x -= (x*x - a)/(2*x);
+    for (u32 i = 0; i < 1000 && fabsf(x * x - a) > 1e-6; ++i) {
+        x -= (x * x - a) / (2 * x);
     }
     return x;
 }
 
 static f32 vec_len(Vec a)
 {
-    return sqrtf(a.x*a.x + a.y*a.y);
+    return sqrtf(a.x * a.x + a.y * a.y);
 }
 
 void game_resize(u32 width, u32 height)
@@ -665,7 +667,7 @@ void game_update(f32 dt)
 #ifdef FEATURE_DEV
     dt *= game.dt_scale;
 
-    #define DEV_DT_SCALE_STEP 0.05f
+#define DEV_DT_SCALE_STEP 0.05f
     if (IsKeyPressed(KEY_Z)) {
         game.dt_scale -= DEV_DT_SCALE_STEP;
         if (game.dt_scale < 0.0f) game.dt_scale = 0.0f;
@@ -683,11 +685,11 @@ void game_update(f32 dt)
 
 #define CAMERA_VELOCITY_FACTOR 0.80f
     if (game.infinite_field) {
-        game.camera_pos.x += game.camera_vel.x*CAMERA_VELOCITY_FACTOR*dt;
-        game.camera_pos.y += game.camera_vel.y*CAMERA_VELOCITY_FACTOR*dt;
+        game.camera_pos.x += game.camera_vel.x * CAMERA_VELOCITY_FACTOR * dt;
+        game.camera_pos.y += game.camera_vel.y * CAMERA_VELOCITY_FACTOR * dt;
         game.camera_vel = vec_sub(
-                              cell_center(*ring_back(&game.snake)),
-                              game.camera_pos);
+            cell_center(*ring_back(&game.snake)),
+            game.camera_pos);
     }
 
     switch (game.state) {
@@ -753,10 +755,10 @@ void game_update(f32 dt)
                             f32 t = ilerpf(0.0f, GAMEOVER_EXPLOSION_RADIUS, vel_len);
                             if (t > 1.0f) t = 1.0f;
                             t = 1.0f - t;
-                            f32 noise_x = (my_rand()%1000)*0.01;
-                            f32 noise_y = (my_rand()%1000)*0.01;
-                            vel_vec.x = vel_vec.x/vel_len*GAMEOVER_EXPLOSION_MAX_VEL*t + noise_x;
-                            vel_vec.y = vel_vec.y/vel_len*GAMEOVER_EXPLOSION_MAX_VEL*t + noise_y;
+                            f32 noise_x = (my_rand() % 1000) * 0.01;
+                            f32 noise_y = (my_rand() % 1000) * 0.01;
+                            vel_vec.x = vel_vec.x / vel_len * GAMEOVER_EXPLOSION_MAX_VEL * t + noise_x;
+                            vel_vec.y = vel_vec.y / vel_len * GAMEOVER_EXPLOSION_MAX_VEL * t + noise_y;
                             game.dead_snake.vels[i] = vel_vec;
                             // TODO: additional velocities along the body of the dead snake
                         } else {
@@ -780,8 +782,8 @@ void game_update(f32 dt)
                     }
 
                     game.dead_snake.masks[next_head_index] |= 1 << cells_dir(
-                                *ring_get(&game.snake, next_head_index),
-                                *ring_get(&game.snake, game.snake.size - 1));
+                                                                  *ring_get(&game.snake, next_head_index),
+                                                                  *ring_get(&game.snake, game.snake.size - 1));
 
                     return;
                 } else {
@@ -793,8 +795,7 @@ void game_update(f32 dt)
 
             game.step_cooldown = STEP_INTEVAL;
         }
-    }
-    break;
+    } break;
 
     case STATE_PAUSE: {
         if (IsKeyPressed(KEY_SPACE)) {
@@ -814,11 +815,10 @@ void game_update(f32 dt)
         for (u32 i = 1; i < game.dead_snake.size; ++i) {
             game.dead_snake.vels[i].x *= 0.99f;
             game.dead_snake.vels[i].y *= 0.99f;
-            game.dead_snake.items[i].x += game.dead_snake.vels[i].x*dt;
-            game.dead_snake.items[i].y += game.dead_snake.vels[i].y*dt;
+            game.dead_snake.items[i].x += game.dead_snake.vels[i].x * dt;
+            game.dead_snake.items[i].y += game.dead_snake.vels[i].y * dt;
         }
-    }
-    break;
+    } break;
 
     default: {
         UNREACHABLE();
@@ -827,19 +827,19 @@ void game_update(f32 dt)
 }
 
 #define FACTOR 100
-#define WIDTH (16*FACTOR)
-#define HEIGHT (9*FACTOR)
+#define WIDTH (16 * FACTOR)
+#define HEIGHT (9 * FACTOR)
 
 static Font font = {0};
 
 void platform_fill_rect(i32 x, i32 y, i32 w, i32 h, u32 color)
 {
-    DrawRectangle(x, y, w, h, *(Color*)&color);
+    DrawRectangle(x, y, w, h, *(Color *)&color);
 }
 
 void platform_stroke_rect(i32 x, i32 y, i32 w, i32 h, u32 color)
 {
-    DrawRectangleLines(x, y, w, h, *(Color*)&color);
+    DrawRectangleLines(x, y, w, h, *(Color *)&color);
 }
 
 u32 platform_text_width(const char *text, u32 size)
@@ -851,7 +851,7 @@ void platform_fill_text(i32 x, i32 y, const char *text, u32 fontSize, u32 color)
 {
     Vector2 size = MeasureTextEx(font, text, fontSize, 0);
     Vector2 position = {.x = x, .y = y - size.y};
-    DrawTextEx(font, text, position, fontSize, 0.0, *(Color*)&color);
+    DrawTextEx(font, text, position, fontSize, 0.0, *(Color *)&color);
 }
 
 void platform_log(const char *message)
