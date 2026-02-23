@@ -92,6 +92,7 @@ static const char *raylib_src[] = {
     "rshapes",
     "rtext",
     "rtextures",
+    "utils",
 };
 
 static const char *raylib_public_headers[] = {

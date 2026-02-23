@@ -26,6 +26,7 @@ jobs:
               with:
                   node-version: 22
                   cache: pnpm
+                  cache-dependency-path: pnpm-lock.yaml
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
@@ -34,7 +35,12 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Install clang-format
-              run: sudo apt-get update && sudo apt-get install -y clang-format
+              run: |
+                  if command -v clang-format >/dev/null 2>&1; then
+                    exit 0
+                  fi
+                  sudo apt-get update
+                  sudo apt-get install -y clang-format
 
             - name: Run formatting checks
               run: pnpm run format:check
@@ -52,20 +58,36 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v5
 
-            - name: Install clang-21 on macOS
+            - name: Set up Docker Buildx (Linux)
+              if: runner.os == 'Linux'
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build site artifacts (Linux)
+              if: runner.os == 'Linux'
+              run: |
+                  rm -rf site
+                  docker buildx build --target site --output type=local,dest=site .
+                  rm -rf wasm
+                  mkdir -p wasm
+                  cp -R site/wasm/. wasm/
+
+            - name: Install clang on macOS
               if: runner.os == 'macOS'
               run: |
-                  brew update
-                  brew install llvm@21
-                  echo "$(brew --prefix llvm@21)/bin" >> "$GITHUB_PATH"
+                  if ! brew list llvm >/dev/null 2>&1; then
+                    brew update
+                    brew install llvm lld
+                  fi
+                  echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
 
             - name: Select compiler on macOS
               if: runner.os == 'macOS'
               run: |
-                  echo "CC=$(which clang-21)" >> "$GITHUB_ENV"
-                  echo "WASM_CC=$(which clang-21)" >> "$GITHUB_ENV"
+                  echo "CC=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_ENV"
+                  echo "WASM_CC=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_ENV"
 
             - name: Build with nob
+              if: runner.os == 'macOS'
               run: |
                   ${CC:-clang} -o nob nob.c
                   ./nob

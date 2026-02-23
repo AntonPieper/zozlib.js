@@ -23,19 +23,13 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v5
 
-            - name: Build examples
-              run: |
-                  clang -o nob nob.c
-                  ./nob
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
-            - name: Prepare Pages artifact
+            - name: Build site artifact
               run: |
                   rm -rf site
-                  mkdir -p site/wasm site/fonts site/resources
-                  cp index.html raylib.js site/
-                  cp -R wasm/. site/wasm/
-                  if [ -d fonts ]; then cp -R fonts/. site/fonts/; fi
-                  if [ -d resources ]; then cp -R resources/. site/resources/; fi
+                  docker buildx build --target site --output type=local,dest=site .
 
             - name: Setup Pages
               uses: actions/configure-pages@v5
