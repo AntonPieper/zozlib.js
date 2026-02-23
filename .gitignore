@@ -1,5 +1,5 @@
 build/
-wasm/*.wasm
+wasm/
 site/
 node_modules/
 nob
