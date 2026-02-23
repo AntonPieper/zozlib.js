@@ -23,29 +23,18 @@ jobs:
               with:
                   submodules: recursive
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
+            - name: Run formatting checks (Docker target)
+              uses: docker/build-push-action@v6
               with:
-                  node-version: 22
-                  cache: pnpm
-                  cache-dependency-path: pnpm-lock.yaml
-
-            - name: Install JS dependencies
-              run: pnpm install --frozen-lockfile
-
-            - name: Install clang-format
-              run: |
-                  if command -v clang-format >/dev/null 2>&1; then
-                    exit 0
-                  fi
-                  sudo apt-get update
-                  sudo apt-get install -y clang-format
-
-            - name: Run formatting checks
-              run: pnpm run format:check
+                  context: .
+                  file: ./Dockerfile
+                  target: format-check
+                  push: false
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
 
     build:
         name: Native + WASM build (${{ matrix.os }})

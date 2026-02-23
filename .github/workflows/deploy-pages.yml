@@ -29,9 +29,15 @@ jobs:
               uses: docker/setup-buildx-action@v3
 
             - name: Build site artifact
-              run: |
-                  rm -rf site
-                  docker buildx build --target site --output type=local,dest=site .
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  target: site
+                  outputs: type=local,dest=site
+                  push: false
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
 
             - name: Setup Pages
               uses: actions/configure-pages@v5
