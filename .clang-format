@@ -1,0 +1,21 @@
+---
+BasedOnStyle: LLVM
+
+# Project style overrides (C-focused, based on own files)
+IndentWidth: 4
+ContinuationIndentWidth: 4
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterFunction: true
+    AfterControlStatement: Never
+    AfterEnum: false
+    AfterStruct: false
+    AfterUnion: false
+    BeforeElse: false
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: None
+PointerAlignment: Right
+DerivePointerAlignment: false
+SortIncludes: Never
+ColumnLimit: 0
