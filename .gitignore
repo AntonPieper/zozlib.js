@@ -1,3 +1,11 @@
 build/
+wasm/*.wasm
+site/
+node_modules/
 nob
 nob.old
+
+compile_commands.json
+compile_commands.tmp
+.cache/
+.DS_Store

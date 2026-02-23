@@ -1,8 +1,9 @@
 # Zozlib.js
 
-Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/raylib) API in JavaScript so you can use it from WebAssembly. Intended as a simplier Web version of Raylib that does not require Emscripten.
+Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/raylib) API in JavaScript so you can use it from WebAssembly. Intended as a simpler Web version of Raylib that _does not require Emscripten_.
 
-**WARNING! This is a Research Project and not guaranteed to be useful in present or/and future! If you quickly need to port your Raylib game to Web just follow these instructions: https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)**
+> [!WARNING]
+> This is a Research Project and not guaranteed to be useful in present or/and future! If you quickly need to port your Raylib game to Web just follow these instructions: [Working for Web (HTML5)](<https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)>)
 
 ## Main Idea
 
@@ -12,16 +13,27 @@ We have no plans to replace the official Emscripten version of Raylib. This is a
 
 ## Start Demo Locally
 
-The demo is deployed to GitHub pages: https://tsoding.github.io/zozlib.js/ But you can run it locally.
+The demo is deployed to GitHub pages: [antonpieper.github.io/zozlib.js](https://antonpieper.github.io/zozlib.js/) But you can run it locally.
 
 ```console
 $ python3 -m http.server 6969
-$ <browser> http://localhost:6969/
+<browser> http://localhost:6969/
 ```
 
 ## Build Demos
 
-```console
-$ clang -o nob nob.c
-$ ./nob
+```bash
+clang -o nob nob.c
+./nob
+```
+
+`./nob` selects compilers this way:
+
+- Native builds use `${CC}` if set, otherwise `clang`.
+- WASM builds use `${WASM_CC}` if set; otherwise `${CC}`
+
+On systems where only a versioned clang supports WASM, run for example:
+
+```bash
+WASM_CC=clang-21 ./nob
 ```
