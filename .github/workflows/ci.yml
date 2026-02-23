@@ -21,7 +21,7 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v5
               with:
-                submodules: recursive
+                  submodules: recursive
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
@@ -60,7 +60,7 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v5
               with:
-                submodules: recursive
+                  submodules: recursive
 
             - name: Set up Docker Buildx (Linux)
               if: runner.os == 'Linux'
