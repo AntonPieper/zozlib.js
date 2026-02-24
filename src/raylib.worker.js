@@ -1,7 +1,13 @@
 // @ts-check
 
 import { SharedBinaryChannel } from "./channel.js";
-import { decodeMainCommand } from "./raylib-protocol.js";
+import {
+    BridgeResponseType,
+    decodeBridgeResponse,
+    decodeMainCommand,
+    encodeBridgeRequestLoadImage,
+    MainCommandType,
+} from "./raylib-protocol.js";
 
 /** @typedef {import("./raylib-protocol.js").WorkerMessage} WorkerMessage */
 
@@ -17,8 +23,11 @@ import { decodeMainCommand } from "./raylib-protocol.js";
  * @typedef {Object} InitMessage
  * @property {"init"} type
  * @property {string} wasmPath
- * @property {OffscreenCanvas} canvas
- * @property {SharedArrayBuffer} channelSab
+ * @property {number} canvasWidth
+ * @property {number} canvasHeight
+ * @property {SharedArrayBuffer} commandSab
+ * @property {SharedArrayBuffer} bridgeReqSab
+ * @property {SharedArrayBuffer} bridgeResSab
  */
 /** @enum {number} */
 const LogLevel = {
@@ -91,18 +100,20 @@ class InputState {
     }
 }
 class ResourceStore {
-    /** @type {(ImageBitmap | null)[]} */
+    /** @type {(OffscreenCanvas | null)[]} */
     #images = [];
+    /** @type {(source: string) => OffscreenCanvas} */
+    #loadImageSync;
+
+    /** @param {(source: string) => OffscreenCanvas} loadImageSync */
+    constructor(loadImageSync) {
+        this.#loadImageSync = loadImageSync;
+    }
+
     /** @param {string} source */
     loadImage(source) {
         const id = this.#images.length;
-        this.#images.push(null);
-        void (async () => {
-            const response = await fetch(source);
-            const blob = await response.blob();
-            const bitmap = await createImageBitmap(blob);
-            this.#images[id] = bitmap;
-        })();
+        this.#images.push(this.#loadImageSync(source));
         return id;
     }
     /** @param {number} id */
@@ -125,27 +136,32 @@ class RaylibBridge {
     exportsRef = null;
     /** @type {(() => void) | null} */
     entryFunction = null;
+    /** @type {SharedBinaryChannel} */
+    commandChannel;
+    #started = false;
+    #shouldClose = false;
+    #waitForFrameSignalInEndDrawing = true;
     /**
      * @param {OffscreenCanvasRenderingContext2D} ctx
      * @param {FrameClock} clock
      * @param {InputState} input
      * @param {ResourceStore} resources
+     * @param {SharedBinaryChannel} commandChannel
      * @param {(message: WorkerMessage) => void} emit
      */
-    constructor(ctx, clock, input, resources, emit) {
+    constructor(ctx, clock, input, resources, commandChannel, emit) {
         this.ctx = ctx;
         this.clock = clock;
         this.input = input;
         this.resources = resources;
+        this.commandChannel = commandChannel;
         this.emit = emit;
     }
     /** @param {WasmInstanceExports} exports */
     setWasmExports(exports) {
         this.exportsRef = exports;
     }
-    tick() {
-        this.entryFunction?.();
-    }
+
     /** @returns {WasmInstanceExports} */
     get wasm() {
         if (this.exportsRef === null) {
@@ -167,7 +183,10 @@ class RaylibBridge {
         this.emit({ type: "title", value: readCString(this.memoryBuffer, title_ptr) });
     }
     WindowShouldClose() {
-        return false;
+        return this.#shouldClose;
+    }
+    CloseWindow() {
+        this.#shouldClose = true;
     }
     /** @param {number} fps */
     SetTargetFPS(fps) {
@@ -185,6 +204,58 @@ class RaylibBridge {
     BeginDrawing() {}
     EndDrawing() {
         this.input.endFrame();
+        const bitmap = this.ctx.canvas.transferToImageBitmap();
+        self.postMessage({ type: "frame", bitmap }, [bitmap]);
+        if (this.#waitForFrameSignalInEndDrawing && !this.#shouldClose) {
+            this.waitForNextFrameSignal();
+        }
+    }
+    hasEntryFunction() {
+        return this.entryFunction !== null;
+    }
+    /** @param {boolean} enabled */
+    setFrameSyncInEndDrawing(enabled) {
+        this.#waitForFrameSignalInEndDrawing = enabled;
+    }
+    waitForNextFrameSignal() {
+        while (!this.#shouldClose) {
+            const command = decodeMainCommand(this.commandChannel.read());
+            const commandType = this.applyCommand(command);
+            if (commandType === MainCommandType.Frame || commandType === MainCommandType.Stop) {
+                return;
+            }
+        }
+    }
+    /** @param {import("./raylib-protocol.js").MainCommand} command */
+    applyCommand(command) {
+        switch (command.type) {
+            case MainCommandType.Frame:
+                if (!this.#started) {
+                    this.clock.begin(command.timestamp);
+                    this.#started = true;
+                } else {
+                    this.clock.tick(command.timestamp);
+                }
+                break;
+            case MainCommandType.KeyDown:
+                this.input.keyDown(command.key);
+                break;
+            case MainCommandType.KeyUp:
+                this.input.keyUp(command.key);
+                break;
+            case MainCommandType.MouseWheel:
+                this.input.wheel(command.delta);
+                break;
+            case MainCommandType.MouseMove:
+                this.input.mouseMove(command.x, command.y);
+                break;
+            case MainCommandType.Stop:
+                this.#shouldClose = true;
+                break;
+            default:
+                throw new Error("Unsupported command type");
+        }
+        return command.type;
     }
     /** @param {number} center_ptr @param {number} radius @param {number} color_ptr */
     DrawCircleV(center_ptr, radius, color_ptr) {
@@ -310,10 +381,13 @@ class RaylibBridge {
     LoadTexture(result_ptr, filename_ptr) {
         const filename = readCString(this.memoryBuffer, filename_ptr);
         const imageId = this.resources.loadImage(filename);
+        const image = this.resources.getImage(imageId);
+        const width = image?.width ?? 0;
+        const height = image?.height ?? 0;
         const result = new Uint32Array(this.memoryBuffer, result_ptr, 5);
         result[0] = imageId;
-        result[1] = 256;
-        result[2] = 256;
+        result[1] = width;
+        result[2] = height;
         result[3] = 1;
         result[4] = 7;
         return result;
@@ -446,14 +520,46 @@ function getColorFromMemory(buffer, color_ptr) {
 }
 /** @param {InitMessage} init */
 async function run(init) {
-    const ctx = init.canvas.getContext("2d");
+    const canvas = new OffscreenCanvas(init.canvasWidth, init.canvasHeight);
+    const ctx = canvas.getContext("2d");
     if (ctx === null) {
         throw new Error("Could not create 2d offscreen context");
     }
     const clock = new FrameClock();
     const input = new InputState();
-    const resources = new ResourceStore();
-    const bridge = new RaylibBridge(ctx, clock, input, resources, (message) => {
+    const commandChannel = new SharedBinaryChannel({
+        sab: init.commandSab,
+        role: "reader",
+    });
+    const bridgeReqChannel = new SharedBinaryChannel({
+        sab: init.bridgeReqSab,
+        role: "writer",
+    });
+    const bridgeResChannel = new SharedBinaryChannel({
+        sab: init.bridgeResSab,
+        role: "reader",
+    });
+    const resources = new ResourceStore((source) => {
+        bridgeReqChannel.write(encodeBridgeRequestLoadImage(source));
+        const response = decodeBridgeResponse(bridgeResChannel.read());
+        switch (response.type) {
+            case BridgeResponseType.LoadImageOk: {
+                const canvas = new OffscreenCanvas(response.width, response.height);
+                const context = canvas.getContext("2d");
+                if (context === null) {
+                    throw new Error("Could not create image decode context in worker");
+                }
+                const pixels = new Uint8ClampedArray(response.pixels);
+                const imageData = new ImageData(pixels, response.width, response.height);
+                context.putImageData(imageData, 0, 0);
+                return canvas;
+            }
+            case BridgeResponseType.Error:
+                throw new Error(response.message);
+        }
+        throw new Error("Unsupported bridge response type");
+    });
+    const bridge = new RaylibBridge(ctx, clock, input, resources, commandChannel, (message) => {
         self.postMessage(message);
     });
     const wasm = await WebAssembly.instantiateStreaming(fetch(init.wasmPath), {
@@ -461,43 +567,22 @@ async function run(init) {
     });
     const exports = validateWasmExports(wasm.instance.exports);
     bridge.setWasmExports(exports);
-    exports.main();
-    const channel = new SharedBinaryChannel({
-        sab: init.channelSab,
-    });
     self.postMessage({ type: "ready" });
-    let started = false;
-    for (;;) {
-        const command = decodeMainCommand(channel.read());
-        switch (command.type) {
-            case 1: {
-                if (!started) {
-                    clock.begin(command.timestamp);
-                    started = true;
-                } else {
-                    clock.tick(command.timestamp);
-                }
-                bridge.tick();
-                // FIXME: Make everything work blocking using the channel so this hack is not needed
-                await new Promise((resolve) => setTimeout(resolve, 0));
-                break;
+    exports.main();
+
+    // Legacy support
+    const entryFunction = bridge.entryFunction?.bind(bridge);
+    if (entryFunction !== undefined) {
+        while (!bridge.WindowShouldClose()) {
+            const command = decodeMainCommand(commandChannel.read());
+            const commandType = bridge.applyCommand(command);
+            if (commandType === MainCommandType.Frame && !bridge.WindowShouldClose()) {
+                entryFunction();
             }
-            case 2:
-                input.keyDown(command.key);
-                break;
-            case 3:
-                input.keyUp(command.key);
-                break;
-            case 4:
-                input.wheel(command.delta);
-                break;
-            case 5:
-                input.mouseMove(command.x, command.y);
-                break;
-            case 6:
-                return;
         }
     }
+
+    self.close();
 }
 /** @param {MessageEvent<InitMessage>} event */
 self.onmessage = (event) => {

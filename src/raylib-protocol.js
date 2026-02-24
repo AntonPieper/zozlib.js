@@ -22,6 +22,7 @@ export const MainCommandType = /** @type {const} **/ ({
 /**
  * @typedef {{ type: "ready" }
  *   | { type: "title", value: string }
+ *   | { type: "frame", bitmap: ImageBitmap }
  *   | { type: "error", value: string }} WorkerMessage
  */
 
@@ -102,5 +103,149 @@ export function decodeMainCommand(bytes) {
             return { type: MainCommandType.Stop };
         default:
             throw new Error(`Unknown command type: ${type}`);
+    }
+}
+
+/** @enum {typeof BridgeRequestType[keyof typeof BridgeRequestType]} */
+export const BridgeRequestType = /** @type {const} **/ ({
+    LoadImage: 1,
+});
+
+/** @enum {typeof BridgeResponseType[keyof typeof BridgeResponseType]} */
+export const BridgeResponseType = /** @type {const} **/ ({
+    LoadImageOk: 1,
+    Error: 255,
+});
+
+/**
+ * @typedef {{ type: typeof BridgeRequestType.LoadImage, source: string }} BridgeRequest
+ */
+
+/**
+ * @typedef {{ type: typeof BridgeResponseType.LoadImageOk, width: number, height: number, pixels: Uint8Array }
+ *   | { type: typeof BridgeResponseType.Error, message: string }} BridgeResponse
+ */
+
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder();
+
+/** @param {string} value */
+function encodeUtf8WithLength(value) {
+    const bytes = utf8Encoder.encode(value);
+    const out = new Uint8Array(4 + bytes.byteLength);
+    const view = new DataView(out.buffer, out.byteOffset, out.byteLength);
+    view.setUint32(0, bytes.byteLength, true);
+    out.set(bytes, 4);
+    return out;
+}
+
+/** @param {DataView} view @param {number} offset */
+function decodeUtf8WithLength(view, offset) {
+    if (offset + 4 > view.byteLength) {
+        throw new Error("Invalid UTF-8 field size");
+    }
+    const length = view.getUint32(offset, true);
+    const start = offset + 4;
+    const end = start + length;
+    if (end > view.byteLength) {
+        throw new Error("Invalid UTF-8 field payload");
+    }
+    const bytes = new Uint8Array(view.buffer, view.byteOffset + start, length);
+    return {
+        value: utf8Decoder.decode(bytes),
+        nextOffset: end,
+    };
+}
+
+/** @param {string} source */
+export function encodeBridgeRequestLoadImage(source) {
+    const sourceField = encodeUtf8WithLength(source);
+    const bytes = new Uint8Array(1 + sourceField.byteLength);
+    bytes[0] = BridgeRequestType.LoadImage;
+    bytes.set(sourceField, 1);
+    return bytes;
+}
+
+/** @param {Uint8Array} bytes @returns {BridgeRequest} */
+export function decodeBridgeRequest(bytes) {
+    if (bytes.byteLength < 1) {
+        throw new Error("Empty bridge request payload");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const type = view.getUint8(0);
+    switch (type) {
+        case BridgeRequestType.LoadImage: {
+            const { value: source, nextOffset } = decodeUtf8WithLength(view, 1);
+            if (nextOffset !== bytes.byteLength) {
+                throw new Error("Unexpected trailing data in bridge load-image request");
+            }
+            return {
+                type: BridgeRequestType.LoadImage,
+                source,
+            };
+        }
+        default:
+            throw new Error(`Unknown bridge request type: ${type}`);
+    }
+}
+
+/** @param {number} width @param {number} height @param {Uint8Array} pixels */
+export function encodeBridgeResponseLoadImageOk(width, height, pixels) {
+    const bytes = new Uint8Array(1 + 4 + 4 + pixels.byteLength);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    view.setUint8(0, BridgeResponseType.LoadImageOk);
+    view.setUint32(1, width, true);
+    view.setUint32(5, height, true);
+    bytes.set(pixels, 9);
+    return bytes;
+}
+
+/** @param {string} message */
+export function encodeBridgeResponseError(message) {
+    const messageField = encodeUtf8WithLength(message);
+    const bytes = new Uint8Array(1 + messageField.byteLength);
+    bytes[0] = BridgeResponseType.Error;
+    bytes.set(messageField, 1);
+    return bytes;
+}
+
+/** @param {Uint8Array} bytes @returns {BridgeResponse} */
+export function decodeBridgeResponse(bytes) {
+    if (bytes.byteLength < 1) {
+        throw new Error("Empty bridge response payload");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const type = view.getUint8(0);
+    switch (type) {
+        case BridgeResponseType.LoadImageOk: {
+            if (bytes.byteLength < 9) {
+                throw new Error("Invalid bridge load-image response size");
+            }
+            const width = view.getUint32(1, true);
+            const height = view.getUint32(5, true);
+            const pixels = bytes.subarray(9);
+            const expectedPixelsLength = width * height * 4;
+            if (pixels.byteLength !== expectedPixelsLength) {
+                throw new Error("Invalid bridge load-image response payload length");
+            }
+            return {
+                type: BridgeResponseType.LoadImageOk,
+                width,
+                height,
+                pixels,
+            };
+        }
+        case BridgeResponseType.Error: {
+            const { value: message, nextOffset } = decodeUtf8WithLength(view, 1);
+            if (nextOffset !== bytes.byteLength) {
+                throw new Error("Unexpected trailing data in bridge error response");
+            }
+            return {
+                type: BridgeResponseType.Error,
+                message,
+            };
+        }
+        default:
+            throw new Error(`Unknown bridge response type: ${type}`);
     }
 }

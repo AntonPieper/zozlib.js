@@ -163,7 +163,7 @@ static void append_wasm_flags(Cmd *cmd)
         "-Wl,--no-entry",
         "-Wl,--allow-undefined",
         "-Wl,--export=main",
-        "-DPLATFORM_WEB",
+        // "-DPLATFORM_WEB",
     };
     cmd_append_all(cmd, flags, ARRAY_LEN(flags));
 }
