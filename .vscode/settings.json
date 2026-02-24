@@ -1,4 +1,8 @@
 {
-    "cSpell.words": ["thirdparty"],
+    "cSpell.words": [
+        "Raylib",
+        "thirdparty",
+        "tsoding"
+    ],
     "cmake.ignoreCMakeListsMissing": true
 }
