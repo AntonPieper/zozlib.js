@@ -1,5 +1,3 @@
-// @ts-check
-
 /** @enum {typeof MainCommandType[keyof typeof MainCommandType]} */
 export const MainCommandType = /** @type {const} **/ ({
     Frame: 1,

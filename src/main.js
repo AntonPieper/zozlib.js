@@ -1,5 +1,7 @@
-// @ts-check
+import { ensureCrossOriginIsolation } from "./coi.js";
 import { RaylibJs } from "./raylib.js";
+
+await ensureCrossOriginIsolation();
 
 /** @typedef {Record<string, string[]>} WasmPaths */
 /** @type {WasmPaths} */
@@ -74,6 +76,7 @@ function getInitialExample() {
     const exampleParam = queryParams.get("example") ?? defaultWasm;
     return allExamples().includes(exampleParam) ? exampleParam : defaultWasm;
 }
+
 renderExampleOptions();
 raylibExampleSelect.addEventListener("change", (event) => {
     const target = /** @type {HTMLSelectElement} */ (event.target);

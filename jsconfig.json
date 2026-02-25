@@ -1,15 +1,27 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        // Environment Settings
+        "module": "nodenext",
+        "target": "esnext",
+        "types": [],
+
+        // Other Outputs
+        "sourceMap": true,
+        "declaration": true,
+        "declarationMap": true,
         "checkJs": true,
-        "strict": true,
-        "noImplicitAny": true,
+
+        // Stricter Typechecking Options
+        // "noUncheckedIndexedAccess": true,
         "exactOptionalPropertyTypes": true,
-        "lib": ["ESNext", "DOM", "WebWorker"],
-        "skipLibCheck": true,
-        "noEmit": true
-    },
-    "include": ["src/**/*.js"]
+
+        // Recommended Options
+        "strict": true,
+        "jsx": "react-jsx",
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true,
+        "noUncheckedSideEffectImports": true,
+        "moduleDetection": "force",
+        "skipLibCheck": true
+    }
 }

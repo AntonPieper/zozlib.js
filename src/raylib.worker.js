@@ -1,4 +1,4 @@
-// @ts-check
+/// <reference lib="webworker" />
 
 import { SharedBinaryChannel } from "./channel.js";
 import {
@@ -584,6 +584,7 @@ async function run(init) {
 
     self.close();
 }
+
 /** @param {MessageEvent<InitMessage>} event */
 self.onmessage = (event) => {
     if (event.data.type !== "init") {

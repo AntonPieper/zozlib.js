@@ -11,7 +11,7 @@
     "scripts": {
         "build": "npm run build:c",
         "build:c": "([ -x ./nob ] || cc -x c nob.c -o nob) && ./nob",
-        "build:c:bear": "if command -v bear >/dev/null 2>&1; then bear -- npm run build; else npm run build; fi",
+        "build:c:bear": "if command -v bear >/dev/null 2>&1; then bear -- ./nob; else npm run build:c; fi",
         "typecheck": "tsc -p tsconfig.typecheck.json",
         "format": "npm run format:js && npm run format:c",
         "format:check": "npm run format:js:check && npm run format:c:check",
@@ -21,6 +21,7 @@
         "format:c:check": "git ls-files -z -- '*.c' '*.h' | xargs -0 clang-format --dry-run --Werror -style=file"
     },
     "devDependencies": {
+        "@types/serviceworker": "^0.0.192",
         "prettier": "^3.0.0",
         "typescript": "^5.9.3"
     },

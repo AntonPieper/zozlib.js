@@ -1,90 +1,36 @@
+#include <string.h>
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
-typedef struct {
-    const char *src_path;
-    const char *bin_path;
-    const char *wasm_path;
-} Example;
+#define RAYLIB_SRC_DIR "./thirdparty/raylib/src"
+#define RAYLIB_BUILD "./build/raylib"
+#define RAYLIB_INC RAYLIB_BUILD "/include"
+#define RAYLIB_LIB RAYLIB_BUILD "/lib/libraylib.a"
+
+#ifdef _WIN32
+#define EXE_EXT ".exe"
+#else
+#define EXE_EXT ""
+#endif
 
 typedef struct {
     const char *native_cc;
     const char *wasm_cc;
 } Toolchain;
 
-Example examples[] = {
-    {
-        .src_path = "./examples/core_basic_window.c",
-        .bin_path = "./build/core_basic_window",
-        .wasm_path = "./wasm/core_basic_window.wasm",
-    },
-    {
-        .src_path = "./examples/core_basic_screen_manager.c",
-        .bin_path = "./build/core_basic_screen_manager",
-        .wasm_path = "./wasm/core_basic_screen_manager.wasm",
-    },
-    {
-        .src_path = "./examples/core_input_keys.c",
-        .bin_path = "./build/core_input_keys",
-        .wasm_path = "./wasm/core_input_keys.wasm",
-    },
-    {
-        .src_path = "./examples/shapes_colors_palette.c",
-        .bin_path = "./build/shapes_colors_palette",
-        .wasm_path = "./wasm/shapes_colors_palette.wasm",
-    },
-    {
-        .src_path = "./examples/tsoding_ball.c",
-        .bin_path = "./build/tsoding_ball",
-        .wasm_path = "./wasm/tsoding_ball.wasm",
-    },
-    {
-        .src_path = "./examples/tsoding_snake/tsoding_snake.c",
-        .bin_path = "./build/tsoding_snake",
-        .wasm_path = "./wasm/tsoding_snake.wasm",
-    },
-    {
-        .src_path = "./examples/core_input_mouse_wheel.c",
-        .bin_path = "./build/core_input_mouse_wheel",
-        .wasm_path = "./wasm/core_input_mouse_wheel.wasm",
-    },
-    {
-        .src_path = "./examples/text_writing_anim.c",
-        .bin_path = "./build/text_writing_anim",
-        .wasm_path = "./wasm/text_writing_anim.wasm",
-    },
-    {
-        .src_path = "./examples/textures_logo_raylib.c",
-        .bin_path = "./build/textures_logo_raylib",
-        .wasm_path = "./wasm/textures_logo_raylib.wasm",
-    },
+static const char *examples[] = {
+    "core_basic_window",
+    "core_basic_screen_manager",
+    "core_input_keys",
+    "shapes_colors_palette",
+    "tsoding_ball",
+    "tsoding_snake/tsoding_snake",
+    "core_input_mouse_wheel",
+    "text_writing_anim",
+    "textures_logo_raylib",
 };
 
-static const char *env_or_default(const char *name, const char *default_value)
-{
-    const char *value = getenv(name);
-    if (value == NULL || *value == '\0') return default_value;
-    return value;
-}
-
-static Toolchain resolve_toolchain()
-{
-    Toolchain toolchain = {
-        .native_cc = env_or_default("CC", "clang"),
-        .wasm_cc = env_or_default("WASM_CC", NULL),
-    };
-
-    if (toolchain.wasm_cc == NULL) {
-        toolchain.wasm_cc = toolchain.native_cc;
-    }
-
-    nob_log(NOB_INFO, "Native compiler: %s", toolchain.native_cc);
-    nob_log(NOB_INFO, "WASM compiler:   %s", toolchain.wasm_cc);
-    return toolchain;
-}
-
-#define RAYLIB_SRC_DIR "./thirdparty/raylib/src"
-static const char *raylib_src[] = {
+static const char *raylib_units[] = {
     "raudio",
     "rcore",
     "rglfw",
@@ -102,11 +48,22 @@ static const char *raylib_public_headers[] = {
     "raymath.h",
 };
 
-static void cmd_append_all(Cmd *cmd, const char **items, size_t count)
+static const char *env_or(const char *name, const char *fallback)
 {
-    for (size_t i = 0; i < count; ++i) {
-        cmd_append(cmd, items[i]);
-    }
+    const char *v = getenv(name);
+    return (v && *v) ? v : fallback;
+}
+
+static Toolchain resolve_toolchain(void)
+{
+    Toolchain tc = {0};
+    tc.native_cc = env_or("CC", "clang");
+    tc.wasm_cc = env_or("WASM_CC", NULL);
+    if (!tc.wasm_cc) tc.wasm_cc = tc.native_cc;
+
+    nob_log(NOB_INFO, "Native compiler: %s", tc.native_cc);
+    nob_log(NOB_INFO, "WASM compiler:   %s", tc.wasm_cc);
+    return tc;
 }
 
 static void append_native_platform_libs(Cmd *cmd)
@@ -149,14 +106,14 @@ static void append_native_platform_libs(Cmd *cmd)
 #else
     static const char *libs[] = {0};
 #endif
-    cmd_append_all(cmd, libs, ARRAY_LEN(libs));
+    da_append_many(cmd, libs, ARRAY_LEN(libs));
 }
 
 static void append_wasm_flags(Cmd *cmd)
 {
     static const char *flags[] = {
         "--target=wasm32",
-        "-I./build/raylib/include",
+        ("-I" RAYLIB_INC),
         "-I./include",
         "--no-standard-libraries",
         "-Wl,--export-table",
@@ -165,96 +122,193 @@ static void append_wasm_flags(Cmd *cmd)
         "-Wl,--export=main",
         // "-DPLATFORM_WEB",
     };
-    cmd_append_all(cmd, flags, ARRAY_LEN(flags));
+    da_append_many(cmd, flags, ARRAY_LEN(flags));
 }
 
-bool build_raylib(Procs *procs, const char *cc, const char *build_dir)
+static bool build_raylib(Procs *procs, const char *cc)
 {
-    Cmd cmd = {0};
-    if (!mkdir_if_not_exists(build_dir)) return true;
-    if (!mkdir_if_not_exists(temp_sprintf("%s/include", build_dir))) return true;
-    if (!mkdir_if_not_exists(temp_sprintf("%s/lib", build_dir))) return true;
+    if (!mkdir_if_not_exists("./build")) return false;
+    if (!mkdir_if_not_exists(RAYLIB_BUILD)) return false;
+    if (!mkdir_if_not_exists(RAYLIB_INC)) return false;
+    if (!mkdir_if_not_exists(RAYLIB_BUILD "/lib")) return false;
 
-    for (size_t i = 0; i < ARRAY_LEN(raylib_src); ++i) {
-        cmd_append(&cmd, cc, "-I" RAYLIB_SRC_DIR);
-        cmd_append(&cmd, "-I" RAYLIB_SRC_DIR "/external/glfw/include");
-        cmd_append(&cmd, "-DPLATFORM_DESKTOP", "-DGRAPHICS_API_OPENGL_21");
-#if defined(__APPLE__)
-        if (strcmp(raylib_src[i], "rglfw") == 0) {
-            cmd_append(&cmd, "-x", "objective-c");
+    size_t mark = temp_save();
+
+    const char *objs[ARRAY_LEN(raylib_units)] = {0};
+
+    // Compile objects if stale
+    for (size_t i = 0; i < ARRAY_LEN(raylib_units); ++i) {
+        const char *unit = raylib_units[i];
+        const char *src = temp_sprintf(RAYLIB_SRC_DIR "/%s.c", unit);
+        const char *obj = temp_sprintf(RAYLIB_BUILD "/%s.o", unit);
+        objs[i] = obj;
+
+        int r = needs_rebuild1(obj, src);
+        if (r < 0) {
+            temp_rewind(mark);
+            return false;
         }
+        if (r == 0) continue;
+
+        Cmd cmd = {0};
+        cmd_append(&cmd, cc, "-I" RAYLIB_SRC_DIR, "-I" RAYLIB_SRC_DIR "/external/glfw/include");
+        cmd_append(&cmd, "-DPLATFORM_DESKTOP", "-DGRAPHICS_API_OPENGL_21");
+
+#if defined(__APPLE__)
+        if (strcmp(unit, "rglfw") == 0) cmd_append(&cmd, "-x", "objective-c");
 #endif
 #if defined(__linux__)
         cmd_append(&cmd, "-D_GLFW_X11");
 #elif defined(_WIN32)
         cmd_append(&cmd, "-D_GLFW_WIN32");
 #endif
-        cmd_append(&cmd,
-                   "-c",
-                   temp_sprintf(RAYLIB_SRC_DIR "/%s.c", raylib_src[i]),
-                   "-o",
-                   temp_sprintf("%s/%s.o", build_dir, raylib_src[i]));
-        if (!cmd_run(&cmd, .async = procs)) return true;
-    }
 
-    if (!procs_flush(procs)) return true;
-
-    for (size_t i = 0; i < ARRAY_LEN(raylib_public_headers); ++i) {
-        if (!copy_file(temp_sprintf(RAYLIB_SRC_DIR "/%s", raylib_public_headers[i]),
-                       temp_sprintf("%s/include/%s", build_dir, raylib_public_headers[i]))) {
-            return true;
+        cmd_append(&cmd, "-c", src, "-o", obj);
+        if (!cmd_run(&cmd, .async = procs)) {
+            temp_rewind(mark);
+            return false;
         }
     }
 
+    if (!procs_flush(procs)) {
+        temp_rewind(mark);
+        return false;
+    }
+
+    // Copy public headers if stale/missing
+    for (size_t i = 0; i < ARRAY_LEN(raylib_public_headers); ++i) {
+        const char *h = raylib_public_headers[i];
+        const char *src = temp_sprintf(RAYLIB_SRC_DIR "/%s", h);
+        const char *dst = temp_sprintf(RAYLIB_INC "/%s", h);
+
+        int r = needs_rebuild1(dst, src);
+        if (r < 0) {
+            temp_rewind(mark);
+            return false;
+        }
+        if (r == 0) continue;
+
+        if (!copy_file(src, dst)) {
+            temp_rewind(mark);
+            return false;
+        }
+    }
+
+    // Archive library if stale
+    {
+        int r = needs_rebuild(RAYLIB_LIB, objs, ARRAY_LEN(objs));
+        if (r < 0) {
+            temp_rewind(mark);
+            return false;
+        }
+        if (r == 1) {
+            Cmd cmd = {0};
 #if defined(__APPLE__)
-    cmd_append(&cmd, "libtool", "-static", "-o", temp_sprintf("%s/lib/libraylib.a", build_dir));
+            cmd_append(&cmd, "libtool", "-static", "-o", RAYLIB_LIB);
 #else
-    cmd_append(&cmd, "ar", "rcs", temp_sprintf("%s/lib/libraylib.a", build_dir));
+            cmd_append(&cmd, "ar", "rcs", RAYLIB_LIB);
 #endif
-    for (size_t i = 0; i < ARRAY_LEN(raylib_src); ++i) {
-        cmd_append(&cmd, temp_sprintf("%s/%s.o", build_dir, raylib_src[i]));
+            for (size_t i = 0; i < ARRAY_LEN(objs); ++i) cmd_append(&cmd, objs[i]);
+            if (!cmd_run(&cmd)) {
+                temp_rewind(mark);
+                return false;
+            }
+        }
     }
-    if (!cmd_run(&cmd)) return true;
-    return false;
+
+    temp_rewind(mark);
+    return true;
 }
 
-bool build_native(Procs *procs, const Toolchain *toolchain)
+static const char *path_base(const char *p)
 {
-    Cmd cmd = {0};
+    const char *s = strrchr(p, '/');
+    return s ? s + 1 : p;
+}
+
+static bool build_native(Procs *procs, const Toolchain *tc)
+{
+    if (!mkdir_if_not_exists("./build/examples")) return false;
     for (size_t i = 0; i < ARRAY_LEN(examples); ++i) {
-        cmd_append(&cmd, toolchain->native_cc, "-I./build/raylib/include");
-        cmd_append(&cmd, "-o", examples[i].bin_path, examples[i].src_path);
-        cmd_append(&cmd, "./build/raylib/lib/libraylib.a", "-lm");
+        size_t mark = temp_save();
+
+        const char *example = examples[i];
+        const char *basename = path_base(example);
+        const char *src = temp_sprintf("./examples/%s.c", example);
+        const char *out = temp_sprintf("./build/examples/%s%s", basename, EXE_EXT);
+
+        const char *inputs[] = {src, RAYLIB_LIB};
+        int r = needs_rebuild(out, inputs, ARRAY_LEN(inputs));
+        if (r < 0) {
+            temp_rewind(mark);
+            return false;
+        }
+        if (r == 0) {
+            temp_rewind(mark);
+            continue;
+        }
+
+        Cmd cmd = {0};
+        cmd_append(&cmd, tc->native_cc, "-I" RAYLIB_INC);
+        cmd_append(&cmd, "-o", out, src);
+        cmd_append(&cmd, RAYLIB_LIB, "-lm");
         append_native_platform_libs(&cmd);
-        if (!cmd_run(&cmd, .async = procs)) return true;
+
+        if (!cmd_run(&cmd, .async = procs)) {
+            temp_rewind(mark);
+            return false;
+        }
+        temp_rewind(mark);
     }
-    return false;
+    return true;
 }
 
-bool build_wasm(Procs *procs, const Toolchain *toolchain)
+static bool build_wasm(Procs *procs, const Toolchain *tc)
 {
-    Cmd cmd = {0};
-    if (!mkdir_if_not_exists("wasm/")) return true;
+    if (!mkdir_if_not_exists("./wasm")) return false;
     for (size_t i = 0; i < ARRAY_LEN(examples); ++i) {
-        cmd_append(&cmd, toolchain->wasm_cc);
+        size_t mark = temp_save();
+
+        const char *example = examples[i];
+        const char *basename = path_base(example);
+        const char *src = temp_sprintf("./examples/%s.c", example);
+        const char *out = temp_sprintf("./wasm/%s.wasm", basename);
+
+        int r = needs_rebuild1(out, src);
+        if (r < 0) {
+            temp_rewind(mark);
+            return false;
+        }
+        if (r == 0) {
+            temp_rewind(mark);
+            continue;
+        }
+
+        Cmd cmd = {0};
+        cmd_append(&cmd, tc->wasm_cc);
         append_wasm_flags(&cmd);
-        cmd_append(&cmd, "-o");
-        cmd_append(&cmd, examples[i].wasm_path);
-        cmd_append(&cmd, examples[i].src_path);
-        if (!cmd_run(&cmd, .async = procs)) return true;
+        cmd_append(&cmd, "-o", out, src);
+
+        if (!cmd_run(&cmd, .async = procs)) {
+            temp_rewind(mark);
+            return false;
+        }
+        temp_rewind(mark);
     }
-    return false;
+    return true;
 }
 
 int main(int argc, char **argv)
 {
     GO_REBUILD_URSELF(argc, argv);
-    if (!mkdir_if_not_exists("build/")) return 1;
-    Toolchain toolchain = resolve_toolchain();
+
+    Toolchain tc = resolve_toolchain();
     Procs procs = {0};
-    if (build_raylib(&procs, toolchain.native_cc, "build/raylib")) return 1;
-    if (build_native(&procs, &toolchain)) return 1;
-    if (build_wasm(&procs, &toolchain)) return 1;
+
+    if (!build_raylib(&procs, tc.native_cc)) return 1;
+    if (!build_native(&procs, &tc)) return 1;
+    if (!build_wasm(&procs, &tc)) return 1;
+
     if (!procs_flush(&procs)) return 1;
     return 0;
 }

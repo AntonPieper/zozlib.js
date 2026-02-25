@@ -1,4 +1,3 @@
-// @ts-check
 import { SharedBinaryChannel } from "./channel.js";
 import {
     decodeBridgeRequest,

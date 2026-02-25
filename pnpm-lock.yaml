@@ -7,6 +7,9 @@ settings:
 importers:
     .:
         devDependencies:
+            "@types/serviceworker":
+                specifier: ^0.0.192
+                version: 0.0.192
             prettier:
                 specifier: ^3.0.0
                 version: 3.8.1
@@ -15,6 +18,12 @@ importers:
                 version: 5.9.3
 
 packages:
+    "@types/serviceworker@0.0.192":
+        resolution:
+            {
+                integrity: sha512-v9ve7JDYs3JnWow0OcSEtodcxlArlmOGFxb7nPMMRzQd8wEBueKA8wIvzQj8OQWeMd75DuqB2RCLoKxZByEbhw==,
+            }
+
     prettier@3.8.1:
         resolution:
             {
@@ -32,6 +41,8 @@ packages:
         hasBin: true
 
 snapshots:
+    "@types/serviceworker@0.0.192": {}
+
     prettier@3.8.1: {}
 
     typescript@5.9.3: {}

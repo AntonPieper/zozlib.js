@@ -48,6 +48,7 @@ RUN git init -b main \
 FROM scratch AS site
 
 COPY --from=build /src/index.html /index.html
+COPY --from=build /src/coi.service-worker.js /coi.service-worker.js
 COPY --from=build /src/src /src
 COPY --from=build /src/wasm /wasm
 COPY --from=build /src/fonts /fonts
