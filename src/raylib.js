@@ -310,9 +310,7 @@ export class RaylibJs {
             this.frameContext = null;
         }
         if (this.frameContext === null) {
-            this.frameContext =
-                canvas.getContext("bitmaprenderer") ??
-                canvas.getContext("2d");
+            this.frameContext = canvas.getContext("bitmaprenderer") ?? canvas.getContext("2d");
             if (this.frameContext === null) {
                 bitmap.close();
                 throw new Error("Could not create a canvas context for frame presentation");
